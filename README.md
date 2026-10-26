@@ -154,7 +154,7 @@ fill in and run again.
 | `handoff <slug>` | Print sheet, renders, the `.3mf` and an STL per part, in `jobs/<slug>/handoff/` |
 | `model script.py out.stl` | Run a Blender script to an STL |
 | `slice model.stl` | Check and slice an existing mesh |
-| `check model.stl` | Printability checks only |
+| `check model.stl` | Structural mesh and printability checks |
 | `inspect job.gcode.3mf` | Time, filament and layers of a sliced job |
 | `grid photo.jpg` | Pixel coordinates over a photo, or a zoomed `--crop` |
 | `measure <slug> ...` | Record scale (or `rectify` an angled face), dimensions, outlines, unknowns and the shop `listing` in `spec.json` |
@@ -364,6 +364,12 @@ A failed, interrupted or dry-run attempt blocks a new handoff until another
 run completes without `--dry-run`. Existing handoff files are left in place.
 
 ## What gets checked
+
+`print3d check` and the MCP `check` tool include the same structural DFM checks
+used before slicing: manifold edges, minimum volume, bed size and triangle count.
+Their JSON includes `dfm`, combined `advice` and an overall `severity`. The CLI
+exits 1 for errors and 0 for warnings or notes. `--project` also includes slice
+analysis, as does the MCP tool's `project` argument.
 
 - **The mesh:** overhangs steeper than 45°, bed contact, tall-and-narrow parts,
   parts too thin to print. Supports are off in the pinned preset, so an overhang

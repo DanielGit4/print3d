@@ -16,15 +16,21 @@ dev = ["pytest>=8"]
 [project.scripts]
 print3d = "print3d.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["print3d", "print3d.skill"]
+include-package-data = false  # All bundled resources are listed below.
+
+[tool.setuptools.package-dir]
+"" = "src"
+"print3d.skill" = "skills/print3d"
 
 [tool.setuptools.package-data]
-print3d = ["profiles/*/*", "skill/*.md", "skill/references/*.md", "coupons/*.py"]
+print3d = ["profiles/*/*", "coupons/*.py"]
+"print3d.skill" = ["*.md", "references/*.md"]
 
 [tool.uv]
 # `uvx --from <checkout>` (the Hermes plugin's mcp.json) rebuilds when the code changes.
-cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }, { file = "src/**/*.md" }, { file = "src/**/*.json" }, { git = { commit = true } }]
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }, { file = "skills/**/*.md" }, { file = "src/**/*.json" }, { git = { commit = true } }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

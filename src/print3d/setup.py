@@ -1,8 +1,9 @@
 """Register print3d with the coding agents on this machine.
 
 Each agent gets the MCP server, launched with the Python print3d is installed
-in. Claude Code and Hermes also get the skill, linked so it follows the
-installed package. Nothing is changed until the plan has been shown; every file edited is
+in. Claude Code and Hermes also get the skill, linked when possible or copied
+otherwise. Rerun setup after upgrades to refresh a copied skill.
+Nothing is changed until the plan has been shown; every file edited is
 backed up beside itself first.
 """
 
@@ -13,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 from collections.abc import Callable
@@ -44,18 +46,40 @@ def server_command() -> list[str]:
     return [sys.executable, "-m", "print3d", "mcp"]
 
 
-def _backup(path: Path) -> None:
+def _backup(path: Path) -> Path | None:
     if path.exists() or path.is_symlink():
-        path.rename(path.with_name(f"{path.name}.print3d-backup-{time.strftime('%Y%m%d-%H%M%S')}"))
+        name = f"{path.name}.print3d-backup-{time.strftime('%Y%m%d-%H%M%S')}"
+        backup = path.with_name(name)
+        suffix = 1
+        while backup.exists() or backup.is_symlink():
+            backup = path.with_name(f"{name}-{suffix}")
+            suffix += 1
+        path.rename(backup)
+        return backup
+    return None
 
 
 def _link(link: Path, target: Path) -> None:
-    if link.is_symlink():
-        link.unlink()
-    else:
-        _backup(link)
+    target = target.resolve()
+    if not (target / "SKILL.md").is_file():
+        raise SetupError(f"Skill not found at {target}; reinstall print3d and run setup again.")
+    if link.is_symlink() and link.resolve() == target:
+        return
     link.parent.mkdir(parents=True, exist_ok=True)
-    link.symlink_to(target, target_is_directory=True)
+    # Prepare first so a failed copy leaves the existing installation untouched.
+    with tempfile.TemporaryDirectory(prefix=f".{NAME}-", dir=link.parent) as staging:
+        prepared = Path(staging) / NAME
+        try:
+            prepared.symlink_to(target, target_is_directory=True)
+        except OSError:
+            shutil.copytree(target, prepared)
+        backup = _backup(link)
+        try:
+            prepared.rename(link)
+        except OSError:
+            if backup is not None:
+                backup.rename(link)
+            raise
 
 
 def _write_with_backup(path: Path, text: str) -> None:
@@ -162,7 +186,7 @@ def plan(
     for agent in agents or detect(home, which):
         if agent == "claude":
             link = home / ".claude" / "skills" / NAME
-            changes.append(Change(agent, str(link), f"link the skill to {skill_dir()}",
+            changes.append(Change(agent, str(link), f"install the skill from {skill_dir()} (link or copy)",
                                   lambda link=link: _link(link, skill_dir())))
             if claude := which("claude"):
                 changes.append(Change(agent, "user scope", "claude mcp add print3d",
@@ -173,7 +197,7 @@ def plan(
                                   lambda path=path: _merge_codex_toml(path)))
         elif agent == "hermes":
             link = home / ".hermes" / "skills" / NAME
-            changes.append(Change(agent, str(link), f"link the skill to {skill_dir()}",
+            changes.append(Change(agent, str(link), f"install the skill from {skill_dir()} (link or copy)",
                                   lambda link=link: _link(link, skill_dir())))
             path = home / ".hermes" / "config.yaml"
             changes.append(Change(agent, str(path), "add mcp_servers.print3d",

@@ -4,7 +4,8 @@ import anyio
 import pytest
 from mcp import Client
 
-from print3d.mcp_server import server
+from print3d.mcp_server import GUIDES, server
+from print3d.paths import skill_dir
 from test_likeness import CARD_PX, L_OUTLINE, _l_part, _photo
 
 
@@ -32,13 +33,11 @@ def test_every_cli_step_is_a_tool():
             "handoff", "fit_coupon", "fits"} <= anyio.run(names)
 
 
-def test_guide_serves_the_skill():
-    photo, listing, parts = _call(
-        ("guide", {"topic": "from-photo"}), ("guide", {"topic": "from-listing"}), ("guide", {"topic": "parts"})
-    )
-    assert "evidence" in photo.content[0].text
-    assert "dim:<name>" in listing.content[0].text
-    assert "fit(" in parts.content[0].text
+@pytest.mark.parametrize("topic", GUIDES)
+def test_guide_serves_the_skill(topic):
+    [result] = _call(("guide", {"topic": topic}))
+    assert not result.is_error
+    assert result.content[0].text == (skill_dir() / GUIDES[topic]).read_text(encoding="utf-8")
 
 
 def test_grid_comes_back_as_an_image(tmp_path, jobs):

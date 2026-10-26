@@ -129,7 +129,9 @@ print3d setup
 
 `setup` finds the agents on this machine, shows what it will change, and on your
 yes registers the print3d MCP server with each. Claude Code and Hermes also get
-the skill as a `/print3d` command. Edited config files are backed up beside
+the skill as a `/print3d` command, linked when supported or copied otherwise.
+Rerun `setup` after upgrading to refresh a copied skill; the previous copy is
+backed up beside it. Edited config files are backed up beside
 themselves. `--dry-run` shows the plan without changing anything; `--agent codex`
 limits it to one agent. Restart your agent afterwards.
 
@@ -183,7 +185,7 @@ Plain bpy that builds geometry. `examples/nameplate.py` is the reference.
 - Orientation is up to you. Studio's auto-orient is off, so the part prints the
   way you model it.
 
-More recipes and gotchas: `src/print3d/skill/references/modelling.md`.
+More recipes and gotchas: `skills/print3d/references/modelling.md`.
 
 ## From a photo
 
@@ -216,7 +218,7 @@ photo so that face is seen square-on; every later point for that view is read of
 the rectified image. When a corner hides behind something, `print3d meet` finds
 it where its two edges cross.
 
-The full workflow is in `src/print3d/skill/references/from-photo.md`.
+The full workflow is in `skills/print3d/references/from-photo.md`.
 
 ### Benchmark: a clothes peg from a museum photo
 
@@ -277,7 +279,7 @@ listing's rounding (`--tolerance 5` for a size given in cm) into everything
 measured off a photo it scaled. Measuring a second listed size back off the photo
 catches a photo in perspective, a different variant, or the box's size quoted as
 the product's. The run reports the listing's price beside the print's grams and
-time. The workflow is in `src/print3d/skill/references/from-listing.md`.
+time. The workflow is in `skills/print3d/references/from-listing.md`.
 
 ### Benchmark: a shelf bracket from its stated sizes
 
@@ -343,7 +345,7 @@ print3d fit set --press 0.05 --snug 0.10 --slide 0.15 --free 0.30
 ```
 
 From then on every script gets them in `params["fit"]` and every run measures
-against them. The full guide is in `src/print3d/skill/references/parts-and-fits.md`.
+against them. The full guide is in `skills/print3d/references/parts-and-fits.md`.
 
 ## Hand it off
 
@@ -395,6 +397,8 @@ hermes plugins validate .                           # check the plugin package
 ```
 
 In a checkout, jobs go to `jobs/` in the repo. The repo root is the Hermes
-plugin: `plugin.json`, `mcp.json` (the MCP server) and `skills/print3d` (a link to
-`src/print3d/skill`). Keep `plugin.json`'s version in step with `pyproject.toml`;
+plugin: `plugin.json`, `mcp.json` (the MCP server) and `skills/print3d` (a real
+directory, so a checkout does not need symlink support). Edit the skill there;
+setuptools also includes it as `print3d/skill` in installed packages.
+Keep `plugin.json`'s version in step with `pyproject.toml`;
 `tests/test_plugin.py` checks it.

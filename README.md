@@ -53,9 +53,13 @@ itself, so there is no Hermes config to edit.
 Start a new session afterwards. `hermes plugins update print3d` updates both;
 `hermes plugins remove print3d` removes both.
 
-On macOS, Blender and Studio are found in `/Applications`. Elsewhere, set
-`BLENDER_BIN` and `BAMBU_STUDIO_BIN` in the environment Hermes runs in. Jobs go to
-`~/print3d/jobs`, or `$PRINT3D_JOBS`.
+Explicit `BLENDER_BIN` and `BAMBU_STUDIO_BIN` paths take precedence, followed by
+executables on `PATH`. On macOS, Blender and Studio are also found in
+`/Applications`. On Windows, print3d checks the Program Files directories for
+`Blender Foundation/Blender <version>/blender.exe` and
+`Bambu Studio/bambu-studio.exe`, preferring newer Blender version folders within
+each directory. Custom and portable installations can use the environment
+variables above. Jobs go to `~/print3d/jobs`, or `$PRINT3D_JOBS`.
 
 Hermes looks for Blender 4.2+ before it installs the plugin, and refuses the
 install when there is none. It checks the usual places: `/Applications` and

@@ -20,14 +20,17 @@ import os
 import shutil
 import subprocess
 import tempfile
+from itertools import chain
 from pathlib import Path
 from typing import Any
+
+from print3d.windows import blender_locations
 
 BLENDER_ENV = "BLENDER_BIN"
 DEFAULT_TIMEOUT = 600
 
-# Every place plugin.json tells Hermes to look, so a Blender that passes the
-# install check is also found here. tests/test_plugin.py keeps the two in step.
+# macOS and Linux locations from plugin.json; Windows Program Files locations
+# are expanded at runtime by blender_locations(). Custom installs can use BLENDER_BIN.
 BLENDER_LOCATIONS = (
     "/Applications/Blender.app/Contents/MacOS/Blender",
     "~/Applications/Blender.app/Contents/MacOS/Blender",
@@ -48,7 +51,7 @@ class BlenderError(RuntimeError):
 
 
 def find_blender(search_path: str | None = None) -> Path:
-    candidates: list[str] = []
+    candidates: list[str | Path] = []
     env = os.environ.get(BLENDER_ENV, "").strip()
     if env:
         candidates.append(env)
@@ -56,7 +59,7 @@ def find_blender(search_path: str | None = None) -> Path:
     if which:
         candidates.append(which)
     candidates.extend(BLENDER_LOCATIONS)
-    for candidate in candidates:
+    for candidate in chain(candidates, blender_locations()):
         path = Path(candidate).expanduser()
         if path.is_file():
             return path.resolve()

@@ -37,7 +37,9 @@
                 { "kind": "flatpak", "app_id": "org.blender.Blender" },
                 { "kind": "snap", "name": "blender" },
                 "~/.steam/steam/steamapps/common/Blender/blender",
-                "~/.local/share/Steam/steamapps/common/Blender/blender"
+                "~/.local/share/Steam/steamapps/common/Blender/blender",
+                "~/blender-*/blender",
+                "/opt/blender*/blender"
               ]
             }
           },

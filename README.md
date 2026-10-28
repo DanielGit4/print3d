@@ -63,10 +63,12 @@ variables above. Jobs go to `~/print3d/jobs`, or `$PRINT3D_JOBS`.
 
 Hermes looks for Blender 4.2+ before it installs the plugin, and refuses the
 install when there is none. It checks the usual places: `/Applications` and
-Steam on macOS; `PATH`, flatpak, snap and Steam on Linux; the uninstall registry
+Steam on macOS; `PATH`, flatpak, snap, Steam, `~/blender-*/blender` and
+`/opt/blender*/blender` on Linux; the uninstall registry
 and Program Files on Windows. If Blender is uninstalled later, Hermes hides the
 print3d tools and asks you to install it again. A Blender it cannot find there,
-such as an unpacked tarball reached through `BLENDER_BIN`, needs the
+such as a tarball unpacked outside those locations and reached only through
+`BLENDER_BIN`, needs the
 [setup route](#other-agents) instead, which registers the server in Hermes's
 `config.yaml` without the check.
 

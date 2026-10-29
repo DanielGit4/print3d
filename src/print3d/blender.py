@@ -15,19 +15,24 @@ Contract for a model script:
 
 from __future__ import annotations
 
+import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
+from itertools import chain
 from pathlib import Path
 from typing import Any
+
+from print3d.windows import blender_locations
 
 BLENDER_ENV = "BLENDER_BIN"
 DEFAULT_TIMEOUT = 600
 
-# Every place plugin.json tells Hermes to look, so a Blender that passes the
-# install check is also found here. tests/test_plugin.py keeps the two in step.
+# macOS and Linux locations from plugin.json; Windows Program Files locations
+# are expanded at runtime by blender_locations(). Custom installs can use BLENDER_BIN.
 BLENDER_LOCATIONS = (
     "/Applications/Blender.app/Contents/MacOS/Blender",
     "~/Applications/Blender.app/Contents/MacOS/Blender",
@@ -40,6 +45,8 @@ BLENDER_LOCATIONS = (
     "/snap/bin/blender",
     "~/.steam/steam/steamapps/common/Blender/blender",
     "~/.local/share/Steam/steamapps/common/Blender/blender",
+    "~/blender-*/blender",
+    "/opt/blender*/blender",
 )
 
 
@@ -48,7 +55,7 @@ class BlenderError(RuntimeError):
 
 
 def find_blender(search_path: str | None = None) -> Path:
-    candidates: list[str] = []
+    candidates: list[str | Path] = []
     env = os.environ.get(BLENDER_ENV, "").strip()
     if env:
         candidates.append(env)
@@ -56,10 +63,23 @@ def find_blender(search_path: str | None = None) -> Path:
     if which:
         candidates.append(which)
     candidates.extend(BLENDER_LOCATIONS)
-    for candidate in candidates:
+    for candidate in chain(candidates, blender_locations()):
         path = Path(candidate).expanduser()
-        if path.is_file():
-            return path.resolve()
+        # Hermes expands '*' in declared paths and tries higher versions first.
+        # Escape other glob metacharacters, including those in the home directory.
+        if "*" in str(path):
+            pattern = "*".join(glob.escape(part) for part in str(path).split("*"))
+            matches = sorted(
+                (Path(match) for match in glob.glob(pattern)),
+                key=lambda match: [(1, int(p)) if p.isdigit() else (0, p)
+                                   for p in re.split(r"(\d+)", str(match))],
+                reverse=True,
+            )
+        else:
+            matches = [path]
+        for match in matches:
+            if match.is_file():
+                return match.resolve()
     raise BlenderError(
         f"Blender not found. Install Blender or set {BLENDER_ENV} to the executable "
         "(on macOS: /Applications/Blender.app/Contents/MacOS/Blender)."

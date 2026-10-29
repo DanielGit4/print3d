@@ -6,10 +6,12 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
 from print3d.repair_3mf import repair_bambu_3mf
+from print3d.windows import studio_locations
 
 
 class StudioError(RuntimeError):
@@ -39,7 +41,7 @@ class SliceRequest:
 
 def find_studio(search_path: str | None = None) -> Path:
     env = os.environ.get("BAMBU_STUDIO_BIN", "").strip()
-    candidates: list[str] = []
+    candidates: list[str | Path] = []
     if env:
         candidates.append(env)
     which = shutil.which("bambu-studio", path=search_path)
@@ -51,7 +53,7 @@ def find_studio(search_path: str | None = None) -> Path:
             "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio",
         ]
     )
-    for candidate in candidates:
+    for candidate in chain(candidates, studio_locations()):
         path = Path(candidate).expanduser()
         if path.is_file():
             return path.resolve()

@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from print3d.dfm import read_stl
+from print3d.dfm import DfmReport, read_stl
 from print3d.project import read_plate_gcode
 
 # Slope measured from the horizontal plane: 0 deg is a flat ceiling, 90 deg a
@@ -55,6 +55,25 @@ class Advice:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def dfm_advice(report: DfmReport) -> list[Advice]:
+    """Include structural findings in the same verdict as overhang and slice advice."""
+    notes = [
+        Advice(
+            "dfm", "error", message,
+            "Repair the mesh, resize it to fit the bed, or reduce its complexity as indicated.",
+        )
+        for message in report.errors
+    ]
+    notes.extend(
+        Advice(
+            "dfm", "warn", message,
+            "Review the mesh complexity and bed placement before slicing.",
+        )
+        for message in report.warnings
+    )
+    return notes
 
 
 def _triangle_area_normal(tri) -> tuple[float, tuple[float, float, float]]:

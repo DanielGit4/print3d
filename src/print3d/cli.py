@@ -11,6 +11,7 @@ from print3d.blender import BlenderError, find_blender, run_model_script
 from print3d.brief import parse_brief
 from print3d import setup as installer
 from print3d import spec as specs
+from print3d.dfm import check_mesh
 from print3d.fits import KINDS, load_fits, save_fits
 from print3d.flatten import flatten_x2d
 from print3d.handoff import build_handoff
@@ -18,7 +19,7 @@ from print3d.likeness import check_job
 from print3d.paths import coupon_script, default_profiles_dir, job_path, safe_name
 from print3d.photo import grid, meet
 from print3d.pipeline import _model_params, run_job
-from print3d.printability import advise, analyze_mesh, analyze_slice
+from print3d.printability import advise, analyze_mesh, analyze_slice, dfm_advice, worst_severity
 from print3d.project import inspect_project
 from print3d.studio import SliceRequest, find_studio, slice_plan
 from print3d.viewer import build_viewer
@@ -57,17 +58,21 @@ def cmd_slice(args: argparse.Namespace) -> int:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    dfm = check_mesh(Path(args.mesh))
     mesh_metrics = analyze_mesh(Path(args.mesh))
     slice_metrics = analyze_slice(Path(args.project)) if args.project else None
+    notes = advise(mesh_metrics, slice_metrics, extra=dfm_advice(dfm))
     payload = {
+        "dfm": dfm.as_dict(),
         "mesh_metrics": mesh_metrics,
-        "advice": [note.as_dict() for note in advise(mesh_metrics, slice_metrics)],
+        "advice": [note.as_dict() for note in notes],
+        "severity": worst_severity(notes),
     }
     if slice_metrics:
         payload["slice_metrics"] = {k: v for k, v in slice_metrics.items() if k != "layers"}
         payload["layers"] = slice_metrics["layers"]
     _print_json(payload)
-    return 0
+    return 1 if payload["severity"] == "error" else 0
 
 
 def cmd_inspect(args: argparse.Namespace) -> int:

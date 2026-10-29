@@ -53,16 +53,22 @@ itself, so there is no Hermes config to edit.
 Start a new session afterwards. `hermes plugins update print3d` updates both;
 `hermes plugins remove print3d` removes both.
 
-On macOS, Blender and Studio are found in `/Applications`. Elsewhere, set
-`BLENDER_BIN` and `BAMBU_STUDIO_BIN` in the environment Hermes runs in. Jobs go to
-`~/print3d/jobs`, or `$PRINT3D_JOBS`.
+Explicit `BLENDER_BIN` and `BAMBU_STUDIO_BIN` paths take precedence, followed by
+executables on `PATH`. On macOS, Blender and Studio are also found in
+`/Applications`. On Windows, print3d checks the Program Files directories for
+`Blender Foundation/Blender <version>/blender.exe` and
+`Bambu Studio/bambu-studio.exe`, preferring newer Blender version folders within
+each directory. Custom and portable installations can use the environment
+variables above. Jobs go to `~/print3d/jobs`, or `$PRINT3D_JOBS`.
 
 Hermes looks for Blender 4.2+ before it installs the plugin, and refuses the
 install when there is none. It checks the usual places: `/Applications` and
-Steam on macOS; `PATH`, flatpak, snap and Steam on Linux; the uninstall registry
+Steam on macOS; `PATH`, flatpak, snap, Steam, `~/blender-*/blender` and
+`/opt/blender*/blender` on Linux; the uninstall registry
 and Program Files on Windows. If Blender is uninstalled later, Hermes hides the
 print3d tools and asks you to install it again. A Blender it cannot find there,
-such as an unpacked tarball reached through `BLENDER_BIN`, needs the
+such as a tarball unpacked outside those locations and reached only through
+`BLENDER_BIN`, needs the
 [setup route](#other-agents) instead, which registers the server in Hermes's
 `config.yaml` without the check.
 
@@ -130,7 +136,9 @@ print3d setup
 
 `setup` finds the agents on this machine, shows what it will change, and on your
 yes registers the print3d MCP server with each. Claude Code and Hermes also get
-the skill as a `/print3d` command. Edited config files are backed up beside
+the skill as a `/print3d` command, linked when supported or copied otherwise.
+Rerun `setup` after upgrading to refresh a copied skill; the previous copy is
+backed up beside it. Edited config files are backed up beside
 themselves. `--dry-run` shows the plan without changing anything; `--agent codex`
 limits it to one agent. Restart your agent afterwards.
 
@@ -155,7 +163,7 @@ fill in and run again.
 | `handoff <slug>` | Print sheet, renders, the `.3mf` and an STL per part, in `jobs/<slug>/handoff/` |
 | `model script.py out.stl` | Run a Blender script to an STL |
 | `slice model.stl` | Check and slice an existing mesh |
-| `check model.stl` | Printability checks only |
+| `check model.stl` | Structural mesh and printability checks |
 | `inspect job.gcode.3mf` | Time, filament and layers of a sliced job |
 | `grid photo.jpg` | Pixel coordinates over a photo, or a zoomed `--crop` |
 | `measure <slug> ...` | Record scale (or `rectify` an angled face), dimensions, outlines, unknowns and the shop `listing` in `spec.json` |
@@ -184,7 +192,7 @@ Plain bpy that builds geometry. `examples/nameplate.py` is the reference.
 - Orientation is up to you. Studio's auto-orient is off, so the part prints the
   way you model it.
 
-More recipes and gotchas: `src/print3d/skill/references/modelling.md`.
+More recipes and gotchas: `skills/print3d/references/modelling.md`.
 
 ## From a photo
 
@@ -217,7 +225,7 @@ photo so that face is seen square-on; every later point for that view is read of
 the rectified image. When a corner hides behind something, `print3d meet` finds
 it where its two edges cross.
 
-The full workflow is in `src/print3d/skill/references/from-photo.md`.
+The full workflow is in `skills/print3d/references/from-photo.md`.
 
 ### Benchmark: a clothes peg from a museum photo
 
@@ -278,7 +286,7 @@ listing's rounding (`--tolerance 5` for a size given in cm) into everything
 measured off a photo it scaled. Measuring a second listed size back off the photo
 catches a photo in perspective, a different variant, or the box's size quoted as
 the product's. The run reports the listing's price beside the print's grams and
-time. The workflow is in `src/print3d/skill/references/from-listing.md`.
+time. The workflow is in `skills/print3d/references/from-listing.md`.
 
 ### Benchmark: a shelf bracket from its stated sizes
 
@@ -344,7 +352,7 @@ print3d fit set --press 0.05 --snug 0.10 --slide 0.15 --free 0.30
 ```
 
 From then on every script gets them in `params["fit"]` and every run measures
-against them. The full guide is in `src/print3d/skill/references/parts-and-fits.md`.
+against them. The full guide is in `skills/print3d/references/parts-and-fits.md`.
 
 ## Hand it off
 
@@ -360,7 +368,17 @@ is still unknown, and the open notes. The Studio `.3mf`, the 3D view and an STL
 per part, in print pose, sit next to it. The sheet is one self-contained HTML
 file that prints to A4.
 
+After rerunning a job, handoff requires the latest run to complete slicing.
+A failed, interrupted or dry-run attempt blocks a new handoff until another
+run completes without `--dry-run`. Existing handoff files are left in place.
+
 ## What gets checked
+
+`print3d check` and the MCP `check` tool include the same structural DFM checks
+used before slicing: manifold edges, minimum volume, bed size and triangle count.
+Their JSON includes `dfm`, combined `advice` and an overall `severity`. The CLI
+exits 1 for errors and 0 for warnings or notes. `--project` also includes slice
+analysis, as does the MCP tool's `project` argument.
 
 - **The mesh:** overhangs steeper than 45°, bed contact, tall-and-narrow parts,
   parts too thin to print. Supports are off in the pinned preset, so an overhang
@@ -386,6 +404,8 @@ hermes plugins validate .                           # check the plugin package
 ```
 
 In a checkout, jobs go to `jobs/` in the repo. The repo root is the Hermes
-plugin: `plugin.json`, `mcp.json` (the MCP server) and `skills/print3d` (a link to
-`src/print3d/skill`). Keep `plugin.json`'s version in step with `pyproject.toml`;
+plugin: `plugin.json`, `mcp.json` (the MCP server) and `skills/print3d` (a real
+directory, so a checkout does not need symlink support). Edit the skill there;
+setuptools also includes it as `print3d/skill` in installed packages.
+Keep `plugin.json`'s version in step with `pyproject.toml`;
 `tests/test_plugin.py` checks it.

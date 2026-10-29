@@ -24,6 +24,10 @@ def coupon_script() -> Path:
 
 
 def skill_dir() -> Path:
+    # The plugin uses a real directory; setuptools ships it inside the wheel.
+    source = repo_root() / "skills" / "print3d"
+    if (repo_root() / "pyproject.toml").is_file() and source.is_dir():
+        return source
     return PACKAGE / "skill"
 
 

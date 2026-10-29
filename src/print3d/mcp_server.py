@@ -17,6 +17,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from print3d import spec as specs
+from print3d.dfm import check_mesh
 from print3d.fits import load_fits, save_fits
 from print3d.handoff import build_handoff
 from print3d.likeness import check_job
@@ -25,7 +26,7 @@ from print3d.photo import grid as draw_grid
 from print3d.photo import meet as cross
 from print3d.pipeline import run_job
 from print3d.viewer import build_viewer
-from print3d.printability import advise, analyze_mesh, analyze_slice
+from print3d.printability import advise, analyze_mesh, analyze_slice, dfm_advice, worst_severity
 
 INSTRUCTIONS = """\
 print3d turns an idea, or a photo of an object, into a Bambu Studio project for a
@@ -297,11 +298,15 @@ def view(slug: str) -> str:
 
 @tool(read_only=True)
 def check(mesh: str, project: str | None = None) -> str:
-    """Printability of an existing STL, and of its sliced .gcode.3mf when given."""
+    """Structural validity and printability of an STL, and its sliced .gcode.3mf when given."""
+    dfm = check_mesh(Path(mesh))
     mesh_metrics = analyze_mesh(Path(mesh))
     slice_metrics = analyze_slice(Path(project)) if project else None
-    notes = advise(mesh_metrics, slice_metrics)
-    return _json({"mesh_metrics": mesh_metrics, "advice": [note.as_dict() for note in notes]})
+    notes = advise(mesh_metrics, slice_metrics, extra=dfm_advice(dfm))
+    return _json({
+        "dfm": dfm.as_dict(), "mesh_metrics": mesh_metrics,
+        "advice": [note.as_dict() for note in notes], "severity": worst_severity(notes),
+    })
 
 
 def main() -> None:

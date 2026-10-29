@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -10,6 +11,40 @@ pytestmark = pytest.mark.skipif(
     os.environ.get("PRINT3D_STUDIO_IT") != "1",
     reason="Set PRINT3D_STUDIO_IT=1 to run a live Blender model and Bambu Studio slice",
 )
+
+
+@pytest.mark.parametrize("execute", [False, True], ids=["dry-run", "failed-dfm"])
+def test_rerun_cannot_handoff_a_previous_slice(tmp_path: Path, monkeypatch, execute):
+    from print3d.dfm import DfmError, inspect_mesh
+    from print3d.handoff import HandoffError, build_handoff
+
+    monkeypatch.setenv("PRINT3D_FITS", str(tmp_path / "fits.json"))
+    script = tmp_path / "model.py"
+    script.write_text("import bpy\nbpy.ops.mesh.primitive_cube_add(size=20)\n")
+    initial = run_job("state test cube", script=script, jobs_dir=tmp_path)
+    assert initial["status"] == "ready_for_review"
+    job_dir = Path(initial["job_dir"])
+    project = Path(initial["open_in_studio"])
+    previous_project = project.read_bytes()
+
+    side = 300 if execute else 30
+    script.write_text(f"import bpy\nbpy.ops.mesh.primitive_cube_add(size={side})\n")
+    if execute:
+        with pytest.raises(DfmError, match="exceeds"):
+            run_job("state test cube", script=script, jobs_dir=tmp_path)
+    else:
+        assert run_job("state test cube", script=script, jobs_dir=tmp_path, execute=False)["status"] == "dry_run"
+    assert inspect_mesh(Path(initial["model"]["mesh"])).size_mm == (side, side, side)
+    assert project.read_bytes() == previous_project
+    with pytest.raises(HandoffError):
+        build_handoff(job_dir, render=False)
+    assert json.loads((job_dir / "report.json").read_text())["status"] == ("failed" if execute else "dry_run")
+
+    script.write_text("import bpy\nbpy.ops.mesh.primitive_cube_add(size=20)\n")
+    assert run_job("state test cube", script=script, jobs_dir=tmp_path)["status"] == "ready_for_review"
+    delivery = build_handoff(job_dir, render=False)
+    stl = next(Path(path) for path in delivery["files"] if path.endswith(".stl"))
+    assert inspect_mesh(stl).size_mm == (20, 20, 20)
 
 
 def test_nameplate_end_to_end(tmp_path: Path):

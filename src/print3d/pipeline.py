@@ -86,6 +86,13 @@ def _append_history(job_dir: Path, entry: dict[str, Any]) -> None:
         handle.write(json.dumps(entry) + "\n")
 
 
+def _save_report(job_dir: Path, report: dict[str, Any]) -> None:
+    """Replace the report only after the complete JSON has been written."""
+    pending = job_dir / "report.json.tmp"
+    pending.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    pending.replace(job_dir / "report.json")
+
+
 def run_job(
     prompt: str,
     *,
@@ -99,14 +106,39 @@ def run_job(
     brief = parse_brief(prompt, color=color)
     job_dir = (jobs_dir or default_jobs_dir()) / brief.slug
     job_dir.mkdir(parents=True, exist_ok=True)
-    profiles = profiles_dir or default_profiles_dir()
+    # Modelling can overwrite meshes before a failure or a dry-run return.
+    # Invalidate the previous slice's report before touching any job artifacts.
+    report: dict[str, Any] = {"brief": brief.as_dict(), "job_dir": str(job_dir), "status": "running"}
+    _save_report(job_dir, report)
+    try:
+        result = _run_job(
+            brief, job_dir, report, script=script, mesh=mesh, execute=execute,
+            profiles=profiles_dir or default_profiles_dir(),
+        )
+    except Exception as exc:
+        report.update(status="failed", error=str(exc))
+        _save_report(job_dir, report)
+        raise
+    _save_report(job_dir, result)
+    return result
+
+
+def _run_job(
+    brief: PrintBrief,
+    job_dir: Path,
+    report: dict[str, Any],
+    *,
+    script: Path | None,
+    mesh: Path | None,
+    execute: bool,
+    profiles: Path,
+) -> dict[str, Any]:
     for required in ("machine.json", "process.json", "filament.json"):
         if not (profiles / required).is_file():
             raise PipelineError(
                 f"Pinned profile missing: {profiles / required}. Run: python -m print3d flatten"
             )
 
-    report: dict[str, Any] = {"brief": brief.as_dict(), "job_dir": str(job_dir)}
     fits = load_fits()
     spec = load_spec(job_dir)
     if spec["dims"] or spec["unknowns"]:
@@ -208,7 +240,6 @@ def run_job(
     )
     viewer = build_viewer(job_dir, report)
     report["viewer"] = str(viewer) if viewer else None
-    (job_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     _append_history(
         job_dir,
         {
@@ -413,7 +444,6 @@ def _run_parts(
     )
     viewer = build_viewer(job_dir, report)
     report["viewer"] = str(viewer) if viewer else None
-    (job_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     _append_history(
         job_dir,
         {

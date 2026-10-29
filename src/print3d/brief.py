@@ -48,17 +48,32 @@ def _intent(prompt: str) -> Intent:
     return "utility"
 
 
-def _size(prompt: str, intent: Intent) -> tuple[float, float, float] | None:
+def _size(prompt: str, intent: Intent) -> tuple[tuple[float, float, float] | None, list[str]]:
+    """The brief's size, plus one assumption note per axis that had to be derived.
+
+    A sign brief may state every axis ("a 40mm x 8mm x 3mm nameplate"); those are used as
+    given. An axis the prompt leaves out keeps the usual nameplate proportion and is
+    recorded as an assumption, so a run never invents a dimension silently.
+    """
     matches = list(MM_RE.finditer(prompt))
     if intent == "utility" and "cube" in prompt.lower() and matches:
         side = float(matches[0].group(1))
-        return (side, side, side)
-    if matches:
-        first = float(matches[0].group(1))
-        if intent == "sign":
-            return (first, first * 0.4, 3.0)
-        return (first, first, first)
-    return None
+        return (side, side, side), []
+    if not matches:
+        return None, []
+    first = float(matches[0].group(1))
+    if intent == "sign":
+        size = [float(match.group(1)) for match in matches[:3]]
+        assumptions: list[str] = []
+        if len(size) < 2:
+            size.append(round(size[0] * 0.4, 3))
+            assumptions.append(
+                f"Depth not stated; used 40% of the stated width ({size[1]:g} mm).")
+        if len(size) < 3:
+            size.append(3.0)
+            assumptions.append("Thickness not stated; used 3 mm.")
+        return (size[0], size[1], size[2]), assumptions
+    return (first, first, first), []
 
 
 def _text(prompt: str) -> str | None:
@@ -76,10 +91,10 @@ def parse_brief(prompt: str, *, color: str | None = None) -> PrintBrief:
     if not text:
         raise ValueError("Prompt is empty.")
     intent = _intent(text)
-    size = _size(text, intent)
+    size, size_assumptions = _size(text, intent)
     color_name = color or (COLOR_RE.search(text).group(1).lower() if COLOR_RE.search(text) else None)
     plate_text = _text(text)
-    assumptions: list[str] = []
+    assumptions: list[str] = list(size_assumptions)
     if size is None:
         if intent == "sign":
             size = (40.0, 16.0, 3.0)

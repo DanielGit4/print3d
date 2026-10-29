@@ -156,7 +156,8 @@ def fits(
 def printer(choose: str | None = None) -> str:
     """The Bambu Lab printer print3d slices for: build volume, nozzles, presets, and the others it has.
 
-    Pass `choose` (e.g. "p2s-0.4" or "x2d-0.4") to switch; the choice is saved for later runs.
+    Pass `choose` (e.g. "p2s-0.4" or "x2d-0.4") to switch; the choice is saved for every later
+    job and rerun. Only switch when the user asks for a different printer.
     """
     return _json(printers.choose_printer(choose) if choose else printers.status())
 

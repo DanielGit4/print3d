@@ -139,7 +139,7 @@ def test_colours_beyond_the_nozzles_get_a_note():
     assert on_p2s is not None and on_x2d is not None
     assert on_p2s.severity == "note"
     assert on_p2s.message.startswith("two colours on the Bambu Lab P2S's one nozzle:")
-    assert on_p2s.fix == "Fine with an AMS; otherwise keep to one colour per plate."
+    assert on_p2s.fix == "Needs an AMS to print unattended; without one, keep to one colour per plate."
     assert on_x2d.message.startswith("three colours on the Bambu Lab X2D's two nozzles:")
 
 

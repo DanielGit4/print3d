@@ -58,7 +58,7 @@ def colour_advice(colours: int, printer: Printer) -> Advice | None:
         "note",
         f"{_count(colours, 'colour')} on the {printer.name}'s {_count(printer.nozzles, 'nozzle')}: "
         "Studio swaps filament within a nozzle, purging at every change.",
-        f"Fine with an AMS; otherwise keep to {_count(printer.nozzles, 'colour')} per plate.",
+        f"Needs an AMS to print unattended; without one, keep to {_count(printer.nozzles, 'colour')} per plate.",
     )
 
 

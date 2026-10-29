@@ -3,8 +3,8 @@
 Each printer is a folder of flattened Studio presets, profiles/<key>/ with
 machine.json, process.json and filament.json (`print3d flatten --printer <key>`
 rebuilds one). The checks read the build volume and the nozzle count from those
-presets instead of pinning one printer, so a printer is a folder, not a code
-change.
+presets instead of pinning one printer, so adding a printer is its folder plus
+the PRESETS entry `flatten` builds it from, not a change to the checks.
 
 Choose with `print3d printer <key>` (saved in ~/print3d/printer.json), or for
 one run with $PRINT3D_PRINTER. Without either, print3d slices for the X2D, as

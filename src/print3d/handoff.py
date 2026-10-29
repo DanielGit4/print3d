@@ -247,7 +247,7 @@ def build_handoff(
         if a["severity"] in ("error", "warn")
     )
     plate_cards = "".join(
-        f'<figure>{_img(p.get("png"), f"plate {p["plate"]}")}<figcaption>Plate {p["plate"]} · '
+        f'<figure>{_img(p.get("png"), "plate " + str(p["plate"]))}<figcaption>Plate {p["plate"]} · '
         f'{_minutes(p.get("estimated_minutes"))} · {(p.get("filament_g") or 0):.1f} g · '
         f'{p.get("layer_count") or "–"} layers</figcaption></figure>'
         for p in plates

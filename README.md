@@ -90,7 +90,8 @@ over a photo) return them as images, so the agent sees what it built.
 ![The 3D view of a box with a lid and an inlaid mark, pulled apart](docs/viewer.png)
 
 Every run also writes `jobs/<slug>/view.html`, the part in 3D: drag to rotate,
-scroll to zoom, hide parts, and pull them apart with the Explode slider. In the
+scroll to zoom, hide parts, pull them apart with the Explode slider, and
+**Measure** between two points on the surface (a click near a corner snaps to it). In the
 **Hermes desktop app** the agent opens it in the preview pane beside the chat,
 so you can turn the part around while you ask for changes. In the TUI or a
 messaging app, you get the images and the path to open in a browser. The page is

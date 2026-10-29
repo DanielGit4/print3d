@@ -9,6 +9,9 @@ from typing import Any, Literal
 Intent = Literal["sign", "utility", "enclosure", "figurine"]
 
 MM_RE = re.compile(r"(\d+(?:\.\d+)?)\s*mm", re.IGNORECASE)
+_AXIS = r"(\d+(?:\.\d+)?)\s*(?:mm)?"
+_BY = r"\s*(?:x|\u00d7|by)\s*"
+DIMS_RE = re.compile(rf"{_AXIS}{_BY}{_AXIS}(?:{_BY}{_AXIS})?(?:\s*mm)?", re.IGNORECASE)
 SAYS_RE = re.compile(
     r"""(?:says?|text|reading)\s+(?:["']([^"']{1,32})["']|([A-Za-z0-9][A-Za-z0-9._-]{0,32}))""",
     re.I,
@@ -51,9 +54,11 @@ def _intent(prompt: str) -> Intent:
 def _size(prompt: str, intent: Intent) -> tuple[tuple[float, float, float] | None, list[str]]:
     """The brief's size, plus one assumption note per axis that had to be derived.
 
-    A sign brief may state every axis ("a 40mm x 8mm x 3mm nameplate"); those are used as
-    given. An axis the prompt leaves out keeps the usual nameplate proportion and is
-    recorded as an assumption, so a run never invents a dimension silently.
+    A sign brief may state every axis ("a 40mm x 8mm x 3mm nameplate", "40 x 8 x 3 mm");
+    those are used as given. Only axes written as one dimension count, so a letter height
+    or a hole size elsewhere in the prompt is never read as depth. An axis the prompt
+    leaves out keeps the usual nameplate proportion and is recorded as an assumption, so
+    a run never invents a dimension silently.
     """
     matches = list(MM_RE.finditer(prompt))
     if intent == "utility" and "cube" in prompt.lower() and matches:
@@ -63,7 +68,8 @@ def _size(prompt: str, intent: Intent) -> tuple[tuple[float, float, float] | Non
         return None, []
     first = float(matches[0].group(1))
     if intent == "sign":
-        size = [float(match.group(1)) for match in matches[:3]]
+        dims = next((m for m in DIMS_RE.finditer(prompt) if "mm" in m.group(0).lower()), None)
+        size = [float(v) for v in dims.groups() if v] if dims else [first]
         assumptions: list[str] = []
         if len(size) < 2:
             size.append(round(size[0] * 0.4, 3))
